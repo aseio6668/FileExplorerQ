@@ -1,7 +1,8 @@
 import React from 'react';
 import styled from 'styled-components';
-import { FileItem } from '@/types';
+import { FileItem, ViewSettings } from '@/types';
 import { FileIcon } from './FileIcon';
+import { FaSort, FaSortUp, FaSortDown } from 'react-icons/fa';
 
 const DetailsContainer = styled.div`
   flex: 1;
@@ -21,6 +22,26 @@ const Header = styled.div`
   position: sticky;
   top: 0;
   z-index: 1;
+`;
+
+const HeaderColumn = styled.div<{ clickable?: boolean }>`
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  cursor: ${props => props.clickable ? 'pointer' : 'default'};
+  padding: 2px 0;
+  border-radius: 2px;
+
+  &:hover {
+    background-color: ${props => props.clickable ? '#404040' : 'transparent'};
+  }
+`;
+
+const SortIcon = styled.div`
+  display: flex;
+  align-items: center;
+  font-size: 10px;
+  opacity: 0.7;
 `;
 
 const DetailItem = styled.div<{ selected?: boolean }>`
@@ -74,17 +95,21 @@ const CellText = styled.div`
 interface FileDetailsProps {
   items: FileItem[];
   selectedItems: string[];
+  viewSettings: ViewSettings;
   onSelectionChange: (selectedItems: string[]) => void;
   onItemDoubleClick: (path: string, isDirectory: boolean) => void;
   onContextMenu: (event: React.MouseEvent, items: FileItem[]) => void;
+  onViewSettingsChange: (settings: ViewSettings) => void;
 }
 
 export const FileDetails: React.FC<FileDetailsProps> = ({
   items,
   selectedItems,
+  viewSettings,
   onSelectionChange,
   onItemDoubleClick,
   onContextMenu,
+  onViewSettingsChange,
 }) => {
   const formatFileSize = (bytes: number): string => {
     if (bytes === 0) return '';
@@ -103,7 +128,7 @@ export const FileDetails: React.FC<FileDetailsProps> = ({
   const getFileType = (item: FileItem): string => {
     if (item.isDirectory) return 'File folder';
     if (!item.extension) return 'File';
-    
+
     const ext = item.extension.toLowerCase();
     const typeMap: { [key: string]: string } = {
       '.txt': 'Text Document',
@@ -124,9 +149,60 @@ export const FileDetails: React.FC<FileDetailsProps> = ({
       '.rar': 'RAR Archive',
       '.exe': 'Application',
     };
-    
+
     return typeMap[ext] || `${ext.substring(1).toUpperCase()} File`;
   };
+
+  const handleColumnSort = (column: 'name' | 'size' | 'modified' | 'type') => {
+    const newSortOrder = viewSettings.sortBy === column && viewSettings.sortOrder === 'asc'
+      ? 'desc'
+      : 'asc';
+
+    onViewSettingsChange({
+      ...viewSettings,
+      sortBy: column,
+      sortOrder: newSortOrder
+    });
+  };
+
+  const getSortIcon = (column: 'name' | 'size' | 'modified' | 'type') => {
+    if (viewSettings.sortBy !== column) {
+      return <FaSort />;
+    }
+    return viewSettings.sortOrder === 'asc' ? <FaSortUp /> : <FaSortDown />;
+  };
+
+  const sortedItems = React.useMemo(() => {
+    const sorted = [...items].sort((a, b) => {
+      // Always put directories first, then files
+      if (a.isDirectory !== b.isDirectory) {
+        return a.isDirectory ? -1 : 1;
+      }
+
+      let comparison = 0;
+
+      switch (viewSettings.sortBy) {
+        case 'name':
+          comparison = a.name.toLowerCase().localeCompare(b.name.toLowerCase());
+          break;
+        case 'size':
+          comparison = a.size - b.size;
+          break;
+        case 'modified':
+          comparison = a.lastModified.getTime() - b.lastModified.getTime();
+          break;
+        case 'type':
+          const typeA = getFileType(a);
+          const typeB = getFileType(b);
+          comparison = typeA.localeCompare(typeB);
+          break;
+      }
+
+      return viewSettings.sortOrder === 'asc' ? comparison : -comparison;
+    });
+
+    return sorted;
+  }, [items, viewSettings.sortBy, viewSettings.sortOrder]);
 
   const handleItemClick = (event: React.MouseEvent, item: FileItem) => {
     event.stopPropagation();
@@ -173,12 +249,24 @@ export const FileDetails: React.FC<FileDetailsProps> = ({
   return (
     <DetailsContainer>
       <Header>
-        <div>Name</div>
-        <div>Size</div>
-        <div>Type</div>
-        <div>Date Modified</div>
+        <HeaderColumn clickable onClick={() => handleColumnSort('name')}>
+          Name
+          <SortIcon>{getSortIcon('name')}</SortIcon>
+        </HeaderColumn>
+        <HeaderColumn clickable onClick={() => handleColumnSort('size')}>
+          Size
+          <SortIcon>{getSortIcon('size')}</SortIcon>
+        </HeaderColumn>
+        <HeaderColumn clickable onClick={() => handleColumnSort('type')}>
+          Type
+          <SortIcon>{getSortIcon('type')}</SortIcon>
+        </HeaderColumn>
+        <HeaderColumn clickable onClick={() => handleColumnSort('modified')}>
+          Date Modified
+          <SortIcon>{getSortIcon('modified')}</SortIcon>
+        </HeaderColumn>
       </Header>
-      {items.map((item) => (
+      {sortedItems.map((item) => (
         <DetailItem
           key={item.path}
           selected={selectedItems.includes(item.path)}

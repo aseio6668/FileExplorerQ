@@ -1,6 +1,6 @@
 import React from 'react';
 import styled from 'styled-components';
-import { FileItem } from '@/types';
+import { FileItem, ViewSettings } from '@/types';
 import { FileIcon } from './FileIcon';
 
 const GridContainer = styled.div`
@@ -58,18 +58,61 @@ const ItemName = styled.div`
 interface FileGridProps {
   items: FileItem[];
   selectedItems: string[];
+  viewSettings: ViewSettings;
   onSelectionChange: (selectedItems: string[]) => void;
   onItemDoubleClick: (path: string, isDirectory: boolean) => void;
   onContextMenu: (event: React.MouseEvent, items: FileItem[]) => void;
+  onViewSettingsChange: (settings: ViewSettings) => void;
 }
 
 export const FileGrid: React.FC<FileGridProps> = ({
   items,
   selectedItems,
+  viewSettings,
   onSelectionChange,
   onItemDoubleClick,
   onContextMenu,
+  onViewSettingsChange,
 }) => {
+  const getFileType = (item: FileItem): string => {
+    if (item.isDirectory) return 'File folder';
+    if (!item.extension) return 'File';
+    const ext = item.extension.toLowerCase();
+    return `${ext.substring(1).toUpperCase()} File`;
+  };
+
+  const sortedItems = React.useMemo(() => {
+    const sorted = [...items].sort((a, b) => {
+      // Always put directories first, then files
+      if (a.isDirectory !== b.isDirectory) {
+        return a.isDirectory ? -1 : 1;
+      }
+
+      let comparison = 0;
+
+      switch (viewSettings.sortBy) {
+        case 'name':
+          comparison = a.name.toLowerCase().localeCompare(b.name.toLowerCase());
+          break;
+        case 'size':
+          comparison = a.size - b.size;
+          break;
+        case 'modified':
+          comparison = a.lastModified.getTime() - b.lastModified.getTime();
+          break;
+        case 'type':
+          const typeA = getFileType(a);
+          const typeB = getFileType(b);
+          comparison = typeA.localeCompare(typeB);
+          break;
+      }
+
+      return viewSettings.sortOrder === 'asc' ? comparison : -comparison;
+    });
+
+    return sorted;
+  }, [items, viewSettings.sortBy, viewSettings.sortOrder]);
+
   const handleItemClick = (event: React.MouseEvent, item: FileItem) => {
     event.stopPropagation();
     
@@ -122,7 +165,7 @@ export const FileGrid: React.FC<FileGridProps> = ({
 
   return (
     <GridContainer onClick={handleContainerClick}>
-      {items.map((item) => (
+      {sortedItems.map((item) => (
         <GridItem
           key={item.path}
           selected={selectedItems.includes(item.path)}

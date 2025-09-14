@@ -538,11 +538,23 @@ export const FileExplorer: React.FC<FileExplorerProps> = ({
 
     switch (viewSettings.viewMode) {
       case 'list':
-        return <FileList {...commonProps} />;
+        return <FileList
+          {...commonProps}
+          viewSettings={viewSettings}
+          onViewSettingsChange={onViewSettingsChange}
+        />;
       case 'details':
-        return <FileDetails {...commonProps} />;
+        return <FileDetails
+          {...commonProps}
+          viewSettings={viewSettings}
+          onViewSettingsChange={onViewSettingsChange}
+        />;
       default:
-        return <FileGrid {...commonProps} />;
+        return <FileGrid
+          {...commonProps}
+          viewSettings={viewSettings}
+          onViewSettingsChange={onViewSettingsChange}
+        />;
     }
   };
 
