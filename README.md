@@ -11,6 +11,8 @@ An elegant, extensible file explorer for Windows built with Electron, React, and
 - **Keyboard Shortcuts**: Standard Windows explorer shortcuts
 - **Extensible Architecture**: Plugin system for easy feature expansion
 
+![Image](ssexplore.png)
+
 ## Development
 
 ### Prerequisites
